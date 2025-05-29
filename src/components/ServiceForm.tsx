@@ -98,8 +98,9 @@ const ServiceForm: React.FC<ServiceFormProps> = ({
     if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.contactInfo.trim())
       newErrors.contactInfo = "Contact information is required";
-    if (!formData.termsAccepted)
-      newErrors.termsAccepted = "You must accept the terms";
+    if (!formData.termsAccepted) {
+      newErrors.termsAccepted = true;
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -310,29 +311,24 @@ const ServiceForm: React.FC<ServiceFormProps> = ({
                 </AlertDescription>
               </Alert>
 
-              <div className="flex items-start space-x-2">
+              <div className="flex items-center space-x-2">
                 <Checkbox
                   id="terms"
                   checked={formData.termsAccepted}
                   onCheckedChange={handleCheckboxChange}
-                  className={errors.termsAccepted ? "border-destructive" : ""}
                 />
-                <div className="grid gap-1.5 leading-none">
-                  <label
-                    htmlFor="terms"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I understand that this platform is a community tool only. I
-                    agree to connect with others at my own risk, and I'm not
-                    using this to hire or act as a professional contractor.
-                  </label>
-                  {errors.termsAccepted && (
-                    <p className="text-sm text-destructive">
-                      {errors.termsAccepted}
-                    </p>
-                  )}
-                </div>
+                <Label
+                  htmlFor="terms"
+                  className={`text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${errors.termsAccepted ? "text-destructive" : ""}`}
+                >
+                  I accept the terms and conditions
+                </Label>
               </div>
+              {errors.termsAccepted && (
+                <p className="text-sm text-destructive mt-1">
+                  You must accept the terms and conditions to post a service.
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>

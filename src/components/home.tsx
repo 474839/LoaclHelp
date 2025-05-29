@@ -313,16 +313,16 @@ const HomePage = () => {
                 <ServiceGrid />
               </TabsContent>
               <TabsContent value="tutoring">
-                <ServiceGrid category="Tutoring" />
+                <ServiceGrid />
               </TabsContent>
               <TabsContent value="cleaning">
-                <ServiceGrid category="Cleaning" />
+                <ServiceGrid />
               </TabsContent>
               <TabsContent value="tech">
-                <ServiceGrid category="Tech Help" />
+                <ServiceGrid />
               </TabsContent>
               <TabsContent value="other">
-                <ServiceGrid category="Other" />
+                <ServiceGrid />
               </TabsContent>
             </Tabs>
           </div>
