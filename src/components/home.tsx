@@ -111,6 +111,9 @@ const HomePage = () => {
                 How It Works
               </Link>
             </nav>
+            <Link to="/auth">
+              <Button variant="outline">Sign In/Sign Up</Button>
+            </Link>
             <Dialog>
               <DialogTrigger asChild>
                 <Button className="bg-teal-600 hover:bg-teal-700">

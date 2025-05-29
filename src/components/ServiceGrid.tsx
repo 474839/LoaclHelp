@@ -18,37 +18,63 @@ import {
 import { Button } from "./ui/button";
 import { MapPin, Phone, Mail, Calendar, Search, Filter } from "lucide-react";
 
-interface Service {
+// Import the fetchServices function
+import { fetchServices, fetchCategories, type Category } from "../lib/supabaseData";
+
+export interface Service {
   id: string;
   title: string;
-  category: string;
   description: string;
+  category_id: string;
   location: string;
   availability: string;
-  contactName: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  createdAt: string;
+  provider_id: string;
+  created_at: string;
+  status: 'active' | 'inactive';
+  images: string[];
 }
 
 interface ServiceGridProps {
-  services?: Service[];
   onServiceClick?: (service: Service) => void;
 }
 
 const ServiceGrid = ({
-  services = defaultServices,
   onServiceClick = () => {},
 }: ServiceGridProps) => {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
 
-  // Extract unique categories and locations for filters
-  const categories = [
-    "all",
-    ...new Set(services.map((service) => service.category)),
-  ];
+  // Fetch services from Supabase when the component mounts
+  React.useEffect(() => {
+    const getServices = async () => {
+      setLoading(true);
+      const fetchedServices = await fetchServices();
+      if (fetchedServices) {
+        setServices(fetchedServices);
+      }
+      setLoading(false);
+    };
+    getServices();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Fetch categories from Supabase when the component mounts
+  React.useEffect(() => {
+    const getCategories = async () => {
+      setCategoriesLoading(true);
+      const fetchedCategories = await fetchCategories();
+      if (fetchedCategories) {
+        setCategories(fetchedCategories);
+      }
+      setCategoriesLoading(false);
+    };
+    getCategories();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const locations = [
     "all",
     ...new Set(services.map((service) => service.location)),
@@ -59,13 +85,27 @@ const ServiceGrid = ({
     const matchesSearch =
       service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || service.category === selectedCategory;
+
+    // Find the selected category object to get its ID
+    const selectedCategoryObject = categories.find(cat => cat.name === selectedCategory);
+    const matchesCategory = 
+      selectedCategory === "all" || 
+      (selectedCategoryObject && service.category_id === selectedCategoryObject.id);
+
     const matchesLocation =
       selectedLocation === "all" || service.location === selectedLocation;
 
-    return matchesSearch && matchesCategory && matchesLocation;
+    // Also filter by status === 'active' as per RLS policy for viewing
+    const matchesStatus = service.status === 'active';
+
+    return matchesSearch && matchesCategory && matchesLocation && matchesStatus;
   });
+
+  // Function to get category name by ID
+  const getCategoryName = (categoryId: string): string => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Unknown Category';
+  };
 
   return (
     <div className="w-full bg-background">
@@ -92,9 +132,12 @@ const ServiceGrid = ({
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category === "all" ? "All Categories" : category}
+                  <SelectItem key="all" value="all">
+                    All Categories
+                  </SelectItem>
+                  {!categoriesLoading && categories.map((category) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -129,7 +172,11 @@ const ServiceGrid = ({
       </div>
 
       {/* Service grid */}
-      {filteredServices.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-12 border rounded-lg">
+          <p className="text-lg font-medium">Loading services...</p>
+        </div>
+      ) : filteredServices.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => (
             <Card
@@ -140,7 +187,7 @@ const ServiceGrid = ({
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg">{service.title}</CardTitle>
-                  <Badge variant="secondary">{service.category}</Badge>
+                  <Badge variant="secondary">{getCategoryName(service.category_id)}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="pb-2">
@@ -160,25 +207,12 @@ const ServiceGrid = ({
               </CardContent>
               <CardFooter className="border-t pt-4 flex flex-col items-start">
                 <p className="font-medium text-sm mb-1">
-                  {service.contactName}
+                  Provider ID: {service.provider_id.substring(0, 6)}...
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  {service.contactEmail && (
-                    <Button variant="outline" size="sm" className="h-8" asChild>
-                      <a href={`mailto:${service.contactEmail}`}>
-                        <Mail className="h-3.5 w-3.5 mr-1" />
-                        Email
-                      </a>
-                    </Button>
-                  )}
-                  {service.contactPhone && (
-                    <Button variant="outline" size="sm" className="h-8" asChild>
-                      <a href={`tel:${service.contactPhone}`}>
-                        <Phone className="h-3.5 w-3.5 mr-1" />
-                        Call
-                      </a>
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm" className="h-8">
+                    Contact
+                  </Button>
                 </div>
               </CardFooter>
             </Card>
@@ -196,82 +230,9 @@ const ServiceGrid = ({
   );
 };
 
-// Default services for demonstration
-const defaultServices: Service[] = [
-  {
-    id: "1",
-    title: "Math Tutoring for High School Students",
-    category: "Tutoring",
-    description:
-      "Experienced math tutor offering help with algebra, calculus, and statistics. Patient approach with proven results for improving grades.",
-    location: "Downtown",
-    availability: "Weekday evenings, Weekend mornings",
-    contactName: "Alex Johnson",
-    contactEmail: "alex@example.com",
-    contactPhone: "555-123-4567",
-    createdAt: "2023-06-15",
-  },
-  {
-    id: "2",
-    title: "House Cleaning Services",
-    category: "Cleaning",
-    description:
-      "Thorough and efficient house cleaning. I bring my own supplies and can handle regular maintenance or deep cleaning jobs.",
-    location: "Westside",
-    availability: "Monday-Friday, 9am-5pm",
-    contactName: "Maria Garcia",
-    contactPhone: "555-987-6543",
-    createdAt: "2023-06-10",
-  },
-  {
-    id: "3",
-    title: "Computer Repair & Tech Support",
-    category: "Tech Help",
-    description:
-      "Fixing hardware issues, software problems, virus removal, and general tech support for computers and laptops.",
-    location: "Eastside",
-    availability: "Flexible hours, including weekends",
-    contactName: "David Kim",
-    contactEmail: "david@example.com",
-    createdAt: "2023-06-05",
-  },
-  {
-    id: "4",
-    title: "Dog Walking & Pet Sitting",
-    category: "Pet Care",
-    description:
-      "Reliable pet care services including daily walks, feeding, and overnight sitting. Experienced with dogs, cats, and small animals.",
-    location: "Northside",
-    availability: "Daily, including weekends",
-    contactName: "Emma Wilson",
-    contactEmail: "emma@example.com",
-    contactPhone: "555-234-5678",
-    createdAt: "2023-06-01",
-  },
-  {
-    id: "5",
-    title: "Moving Help - Strong Lifter",
-    category: "Moving",
-    description:
-      "Need help moving? I can assist with heavy lifting, furniture assembly, and loading/unloading trucks. Have my own transportation.",
-    location: "Downtown",
-    availability: "Weekends only",
-    contactName: "James Smith",
-    contactPhone: "555-876-5432",
-    createdAt: "2023-05-28",
-  },
-  {
-    id: "6",
-    title: "Guitar Lessons for Beginners",
-    category: "Music Lessons",
-    description:
-      "Patient guitar teacher with 5+ years of experience. Learn popular songs quickly while developing proper technique. All ages welcome.",
-    location: "Southside",
-    availability: "Tuesday-Thursday afternoons, Saturdays",
-    contactName: "Carlos Rodriguez",
-    contactEmail: "carlos@example.com",
-    createdAt: "2023-05-25",
-  },
-];
+// Remove default services as we fetch from Supabase now
+// const defaultServices: Service[] = [
+// // ... mock data ...
+// ];
 
 export default ServiceGrid;
