@@ -111,7 +111,7 @@ const HomePage = () => {
                 How It Works
               </Link>
             </nav>
-            <Link to="/auth">
+            <Link to="/signin">
               <Button variant="outline">Sign In/Sign Up</Button>
             </Link>
             <Dialog>

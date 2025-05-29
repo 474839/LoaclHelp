@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth-context";
-import Home from "./components/home";
-import AuthPage from "./pages/auth";
-import routes from "tempo-routes";
+import HomePage from "./components/home";
+import SignInPage from "./components/SignInPage";
+import ProfilePage from "./components/ProfilePage";
+import ProfileCompletionPage from "./components/ProfileCompletionPage";
 import { Toaster } from "./components/ui/toaster";
 
 // Protected route wrapper
@@ -15,7 +16,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/signin" replace />;
   }
 
   return <>{children}</>;
@@ -24,16 +25,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/signin" element={<SignInPage />} />
       {/* Add more public routes here */}
       
       {/* Protected routes */}
       <Route
+        path="/complete-profile"
+        element={
+          <ProtectedRoute>
+            <ProfileCompletionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/profile"
         element={
           <ProtectedRoute>
-            <div>Profile Page (Coming Soon)</div>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />
@@ -55,7 +64,7 @@ function App() {
       <Suspense fallback={<p>Loading...</p>}>
         <>
           <AppRoutes />
-          {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
+          {/* Removed tempo-routes integration for now */}
           <Toaster />
         </>
       </Suspense>
