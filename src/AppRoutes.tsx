@@ -6,10 +6,20 @@ import ProfilePage from "./components/ProfilePage";
 
 // Protected route wrapper component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  console.log('ProtectedRoute - user:', user, 'loading:', loading);
+
+  if (loading) {
+    console.log('ProtectedRoute - Loading auth state...');
+    return <div>Loading...</div>; // Or a loading spinner
+  }
+
   if (!user) {
+    console.log('ProtectedRoute - User is not authenticated, redirecting to /signin');
     return <Navigate to="/signin" replace />;
   }
+
+  console.log('ProtectedRoute - User is authenticated, rendering children.');
   return <>{children}</>;
 }
 

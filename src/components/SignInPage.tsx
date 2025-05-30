@@ -32,13 +32,40 @@ export default function SignInPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  // Effect to navigate after successful sign-in
+  // Effect to navigate after successful sign-in or signup based on profile completion
   useEffect(() => {
-    // console.log('SignInPage useEffect - user:', user); // Removed console log for clarity
-    if (user) {
-      // console.log('User is logged in, attempting to navigate to /.'); // Removed console log for clarity
-      navigate("/");
+    async function checkProfileCompletionAndNavigate() {
+      console.log('useEffect - user:', user);
+      if (user) {
+        console.log('useEffect - User is authenticated, checking profile completion...');
+        const supabase = createSupabaseBrowserClient();
+        const { data: profile, error } = await supabase
+          .from('user_profiles')
+          .select('phone_number, location') // Fetch phone_number and location
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('useEffect - Profile fetch result:', profile, 'Error:', error);
+
+        if (error && error.details?.includes('0 rows')) {
+           console.log('useEffect - Profile record does not exist, navigating to /complete-profile');
+           navigate("/complete-profile");
+        } else if (error) {
+          console.error("useEffect - Error fetching profile completion status:", error);
+          // Handle other errors if necessary, maybe stay on signin page or show a message
+        } else if (profile && (!profile.phone_number || !profile.location)) {
+           console.log('useEffect - Profile exists but phone_number or location is missing, navigating to /complete-profile');
+           navigate("/complete-profile");
+        } else {
+          console.log('useEffect - Profile complete, navigating to /');
+          navigate("/");
+        }
+      } else {
+        console.log('useEffect - User is null, staying on signin page.');
+      }
     }
+
+    checkProfileCompletionAndNavigate();
   }, [user, navigate]); // Depend on user and navigate
 
   const handleInputChange = (
@@ -78,7 +105,7 @@ export default function SignInPage() {
     try {
       const supabase = createSupabaseBrowserClient();
       
-      // 1. Sign up the user
+      // Sign up the user with email and password
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -90,9 +117,7 @@ export default function SignInPage() {
         title: "Success",
         description: "Account created! Please check your email to verify your account.",
       });
-      // The handle_new_user trigger will create the profile, and the user_profiles page handles completion.
-      // Redirect to profile completion after sign-up.
-      navigate("/complete-profile"); 
+      // Navigation will be handled by the useEffect hook after auth state changes
     } catch (error) {
       console.error("Error signing up:", error);
       toast({
