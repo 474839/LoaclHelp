@@ -14,6 +14,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { toast } from "./ui/use-toast";
+import Navigation from "./Navigation";
 
 interface UserProfile {
   id: string;
@@ -25,6 +26,7 @@ interface UserProfile {
   location: string | null;
   created_at: string;
   updated_at: string;
+  user_type: string | null;
 }
 
 export default function ProfilePage() {
@@ -132,114 +134,125 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>
-                Manage your account settings and profile information
-              </CardDescription>
+    <div>
+      <Navigation />
+      <div className="container max-w-2xl py-8">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Profile</CardTitle>
+                <CardDescription>
+                  Manage your account settings and profile information
+                </CardDescription>
+              </div>
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback>
+                  {profile?.full_name
+                    ? profile.full_name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                    : "U"}
+                </AvatarFallback>
+              </Avatar>
             </div>
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback>
-                {profile?.full_name
-                  ? profile.full_name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                  : "U"}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="full_name">Full Name</Label>
-                <Input
-                  id="full_name"
-                  name="full_name"
-                  value={formData.full_name}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Enter your full name"
-                />
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input
+                    id="full_name"
+                    name="full_name"
+                    value={formData.full_name}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="phone_number">Phone Number</Label>
+                  <Input
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="Enter your location"
+                  />
+                </div>
+
+                {/* Display User Type */}
+                {!isEditing && profile?.user_type && (
+                   <div className="grid gap-2">
+                     <Label>User Type</Label>
+                     <p className="text-sm text-gray-700">{profile.user_type}</p>
+                   </div>
+                )}
+
+                <div className="grid gap-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="Tell us about yourself"
+                    className="min-h-[100px]"
+                  />
+                </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="phone_number">Phone Number</Label>
-                <Input
-                  id="phone_number"
-                  name="phone_number"
-                  value={formData.phone_number}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Enter your phone number"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Enter your location"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Tell us about yourself"
-                  className="min-h-[100px]"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4">
-              {isEditing ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      // Reset form data to original profile data
-                      setFormData({
-                        full_name: profile?.full_name || "",
-                        phone_number: profile?.phone_number || "",
-                        bio: profile?.bio || "",
-                        location: profile?.location || "",
-                      });
-                    }}
-                  >
-                    Cancel
+              <div className="flex justify-end gap-4">
+                {isEditing ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false);
+                        // Reset form data to original profile data
+                        setFormData({
+                          full_name: profile?.full_name || "",
+                          phone_number: profile?.phone_number || "",
+                          bio: profile?.bio || "",
+                          location: profile?.location || "",
+                        });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="button" onClick={() => setIsEditing(true)}>
+                    Edit Profile
                   </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Saving..." : "Save Changes"}
-                  </Button>
-                </>
-              ) : (
-                <Button type="button" onClick={() => setIsEditing(true)}>
-                  Edit Profile
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 

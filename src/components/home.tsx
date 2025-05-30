@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Search, Menu, X, ChevronDown, MapPin, Star } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth-context";
+import { createSupabaseBrowserClient } from "../lib/supabase";
+import { Search, Menu, X, ChevronDown, MapPin, Star, PlusCircle, Filter, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -16,171 +18,185 @@ import { Dialog, DialogContent, DialogTrigger } from "./ui/dialog";
 import ServiceForm from "./ServiceForm";
 import ServiceGrid from "./ServiceGrid";
 import ServiceDetail from "./ServiceDetail";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "./ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { debounce } from 'lodash';
+
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  category_id: string;
+  price: number;
+  provider_id: string;
+  status: string;
+  images: string[];
+  created_at: string;
+  categories: { name: string }; // Include category name
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 const HomePage = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filters, setFilters] = useState({
+    category: "",
+    search: "",
+  });
 
-  // Mock categories for demonstration
-  const categories = [
-    { id: 1, name: "Tutoring", icon: "📚" },
-    { id: 2, name: "Cleaning", icon: "🧹" },
-    { id: 3, name: "Tech Help", icon: "💻" },
-    { id: 4, name: "Moving", icon: "📦" },
-    { id: 5, name: "Pet Sitting", icon: "🐾" },
-    { id: 6, name: "Gardening", icon: "🌱" },
-    { id: 7, name: "Handyman", icon: "🔧" },
-    { id: 8, name: "Cooking", icon: "🍳" },
-  ];
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.from('categories').select('id, name');
+      if (error) {
+        console.error('Error fetching categories:', error);
+      } else {
+        setCategories(data || []);
+      }
+    };
+    fetchCategories();
+  }, []);
 
-  // Mock featured services
-  const featuredServices = [
-    {
-      id: 1,
-      title: "Math Tutoring for High School Students",
-      category: "Tutoring",
-      location: "Downtown",
-      rating: 4.8,
-      image:
-        "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=500&q=80",
-      provider: "Alex Johnson",
-      description:
-        "Experienced math tutor specializing in calculus and algebra. Available weekday evenings and weekends.",
-      contact: "alex@example.com",
-    },
-    {
-      id: 2,
-      title: "Home Deep Cleaning Services",
-      category: "Cleaning",
-      location: "Westside",
-      rating: 4.9,
-      image:
-        "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&q=80",
-      provider: "Maria Garcia",
-      description:
-        "Professional home cleaning with eco-friendly products. Kitchen, bathroom, living areas, and more.",
-      contact: "maria@example.com",
-    },
-    {
-      id: 3,
-      title: "Computer Repair & Tech Support",
-      category: "Tech Help",
-      location: "Eastside",
-      rating: 4.7,
-      image:
-        "https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?w=500&q=80",
-      provider: "David Kim",
-      description:
-        "Fix computer issues, software installation, virus removal, and general tech support for all devices.",
-      contact: "david@example.com",
-    },
-  ];
+  // Fetch services based on filters
+  useEffect(() => {
+    const fetchServices = async () => {
+      setLoading(true);
+      const supabase = createSupabaseBrowserClient();
+      let query = supabase
+        .from('services')
+        .select(`
+          *,
+          categories (name)
+        `)
+        .eq('status', 'active'); // Only fetch active services
+
+      if (filters.category) {
+        query = query.eq('category_id', filters.category);
+      }
+      if (filters.search) {
+        query = query.textSearch('title, description', `'${filters.search}'`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching services:', error);
+      } else {
+        setServices(data as Service[] || []);
+      }
+      setLoading(false);
+    };
+
+    fetchServices();
+  }, [filters]);
+
+  const handleFilterChange = (name: string, value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const debouncedSearch = useMemo(
+    () => debounce((value) => handleFilterChange('search', value), 500),
+    []
+  );
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedSearch(e.target.value);
+  };
+
+  const handleViewService = (service: Service) => {
+    setSelectedService(service);
+    setIsDetailSheetOpen(true);
+  };
+
+  const handleSheetClose = () => {
+    setIsSheetOpen(false);
+    setIsDetailSheetOpen(false);
+    setSelectedService(null);
+    // Potentially refresh services after adding/editing
+    const fetchServices = async () => {
+      setLoading(true);
+      const supabase = createSupabaseBrowserClient();
+      let query = supabase
+        .from('services')
+        .select(`
+          *,
+          categories (name)
+        `)
+        .eq('status', 'active'); // Only fetch active services
+
+      if (filters.category) {
+        query = query.eq('category_id', filters.category);
+      }
+      if (filters.search) {
+        query = query.textSearch('title, description', `'${filters.search}'`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching services:', error);
+      }
+      setServices(data as Service[] || []);
+      setLoading(false);
+    };
+
+    fetchServices();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-teal-600">
-              LocalHelp
-            </Link>
-          </div>
+      {/* Integrated Header */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="text-xl font-bold">
+            LocalHelp
+          </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            <div className="relative w-64">
-              <Input
-                type="text"
-                placeholder="Search services..."
-                className="pl-10"
-              />
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            </div>
-            <nav className="flex space-x-6">
-              <Link to="/" className="text-gray-700 hover:text-teal-600">
-                Home
-              </Link>
-              <Link to="/about" className="text-gray-700 hover:text-teal-600">
-                About
-              </Link>
-              <Link
-                to="/how-it-works"
-                className="text-gray-700 hover:text-teal-600"
-              >
-                How It Works
-              </Link>
-            </nav>
-            <Link to="/signin">
-              <Button variant="outline">Sign In/Sign Up</Button>
-            </Link>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-teal-600 hover:bg-teal-700">
-                  Post a Service
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                {/* Link to My Services (Coming Soon) */}
+                <Link to="/my-services">
+                  <Button variant="ghost">My Services</Button>
+                </Link>
+                {/* Profile Button */}
+                <Link to="/profile">
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <Button variant="outline" onClick={() => useAuth().signOut()}>
+                  Sign Out
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
-                <ServiceForm />
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
+              </>
+            ) : (
+              <Link to="/signin">
+                <Button>Sign In</Button>
+              </Link>
+            )}
           </div>
         </div>
-
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white px-4 py-3 shadow-lg">
-            <div className="relative mb-3">
-              <Input
-                type="text"
-                placeholder="Search services..."
-                className="pl-10 w-full"
-              />
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            </div>
-            <nav className="flex flex-col space-y-3">
-              <Link to="/" className="text-gray-700 hover:text-teal-600 py-1">
-                Home
-              </Link>
-              <Link
-                to="/about"
-                className="text-gray-700 hover:text-teal-600 py-1"
-              >
-                About
-              </Link>
-              <Link
-                to="/how-it-works"
-                className="text-gray-700 hover:text-teal-600 py-1"
-              >
-                How It Works
-              </Link>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-teal-600 hover:bg-teal-700 w-full mt-2">
-                    Post a Service
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px]">
-                  <ServiceForm />
-                </DialogContent>
-              </Dialog>
-            </nav>
-          </div>
-        )}
       </header>
 
       <main>
@@ -254,19 +270,19 @@ const HomePage = () => {
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredServices.map((service) => (
+              {services.map((service) => (
                 <Card
                   key={service.id}
                   className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer bg-white"
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
-                      src={service.image}
+                      src={service.images[0]}
                       alt={service.title}
                       className="w-full h-full object-cover"
                     />
                     <Badge className="absolute top-3 right-3 bg-teal-600">
-                      {service.category}
+                      {service.categories.name}
                     </Badge>
                   </div>
                   <CardHeader className="pb-2">
@@ -313,19 +329,19 @@ const HomePage = () => {
                 <TabsTrigger value="other">Other</TabsTrigger>
               </TabsList>
               <TabsContent value="all">
-                <ServiceGrid />
+                <ServiceGrid services={services} onViewService={handleViewService} />
               </TabsContent>
               <TabsContent value="tutoring">
-                <ServiceGrid />
+                <ServiceGrid services={services} onViewService={handleViewService} />
               </TabsContent>
               <TabsContent value="cleaning">
-                <ServiceGrid />
+                <ServiceGrid services={services} onViewService={handleViewService} />
               </TabsContent>
               <TabsContent value="tech">
-                <ServiceGrid />
+                <ServiceGrid services={services} onViewService={handleViewService} />
               </TabsContent>
               <TabsContent value="other">
-                <ServiceGrid />
+                <ServiceGrid services={services} onViewService={handleViewService} />
               </TabsContent>
             </Tabs>
           </div>
@@ -478,14 +494,18 @@ const HomePage = () => {
 
       {/* Service Detail Modal */}
       {selectedService && (
-        <Dialog
+        <Sheet
           open={!!selectedService}
           onOpenChange={() => setSelectedService(null)}
         >
-          <DialogContent className="sm:max-w-[800px]">
-            <ServiceDetail service={selectedService} />
-          </DialogContent>
-        </Dialog>
+          <SheetContent className="w-full md:w-3/4 lg:max-w-2xl overflow-auto">
+            <SheetHeader>
+              <SheetTitle>{selectedService?.title}</SheetTitle>
+              <SheetClose />
+            </SheetHeader>
+            <ServiceDetail service={selectedService} onClose={handleSheetClose} />
+          </SheetContent>
+        </Sheet>
       )}
     </div>
   );

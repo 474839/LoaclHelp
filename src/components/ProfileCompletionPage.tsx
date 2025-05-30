@@ -15,6 +15,7 @@ import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { toast } from "./ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import Navigation from "./Navigation";
 
 enum UserType { 
   HIRE = "hire", 
@@ -70,22 +71,19 @@ export default function ProfileCompletionPage() {
     if (!user) return;
 
     setIsLoading(true);
-    try {
-      // Update user profile with phone and location
-      await updateProfile({
-        phone: formData.phone,
-        location: formData.location,
-      });
+    const supabase = createSupabaseBrowserClient();
 
-      // Update user type in the database
-      const supabase = createSupabaseBrowserClient();
+    try {
+      // Update user profile information in the user_profiles table
       const { error } = await supabase
         .from("user_profiles")
-        .upsert({
-          user_id: user.id,
+        .update({
+          phone_number: formData.phone,
+          location: formData.location,
           user_type: formData.user_type,
-          updated_at: new Date().toISOString(),
-        });
+          updated_at: new Date().toISOString(), // Update the timestamp
+        })
+        .eq("user_id", user.id); // Target the current user's profile
 
       if (error) throw error;
 
@@ -99,7 +97,7 @@ export default function ProfileCompletionPage() {
         navigate("/"); // Redirect to home page for hiring users
       } else {
         // We'll handle the service offering flow later
-        navigate("/profile");
+        navigate("/profile"); // Or a confirmation/next steps page for service providers
       }
     } catch (error) {
       console.error("Error saving profile information:", error);
@@ -120,108 +118,111 @@ export default function ProfileCompletionPage() {
   }
 
   return (
-    <div className="container max-w-md py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Complete Your Profile</CardTitle>
-          <CardDescription>
-            Please provide some additional information to set up your profile.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: step > 1 ? 50 : -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: step > 1 ? -50 : 50 }}
-                transition={{ duration: 0.3 }}
-              >
-                {step === 1 && (
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        placeholder="Enter your phone number"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                      />
+    <div>
+      <Navigation />
+      <div className="container max-w-md py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Complete Your Profile</CardTitle>
+            <CardDescription>
+              Please provide some additional information to set up your profile.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0, x: step > 1 ? 50 : -50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: step > 1 ? -50 : 50 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {step === 1 && (
+                    <div className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          placeholder="Enter your phone number"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="location">Location</Label>
+                        <Input
+                          id="location"
+                          name="location"
+                          type="text"
+                          placeholder="Enter your location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input
-                        id="location"
-                        name="location"
-                        type="text"
-                        placeholder="Enter your location"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        required
-                      />
+                  )}
+
+                  {step === 2 && (
+                    <div className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label>What would you like to do?</Label>
+                        <RadioGroup 
+                          value={formData.user_type} 
+                          onValueChange={handleRadioChange}
+                          className="space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value={UserType.HIRE} id="hire" />
+                            <Label htmlFor="hire" className="font-normal">
+                              I'm looking to hire someone
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value={UserType.OFFER} id="offer" />
+                            <Label htmlFor="offer" className="font-normal">
+                              I want to offer a service
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              <div className="flex justify-between">
+                {step > 1 && (
+                  <Button type="button" variant="outline" onClick={handleBack}>
+                    Back
+                  </Button>
                 )}
 
-                {step === 2 && (
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>What would you like to do?</Label>
-                      <RadioGroup 
-                        value={formData.user_type} 
-                        onValueChange={handleRadioChange}
-                        className="space-y-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value={UserType.HIRE} id="hire" />
-                          <Label htmlFor="hire" className="font-normal">
-                            I'm looking to hire someone
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value={UserType.OFFER} id="offer" />
-                          <Label htmlFor="offer" className="font-normal">
-                            I want to offer a service
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  </div>
+                {step < 2 ? (
+                  <Button 
+                    type="button" 
+                    onClick={handleNext} 
+                    disabled={!isStep1Valid}
+                  >
+                    Next
+                  </Button>
+                ) : (
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Saving..." : "Complete Setup"}
+                  </Button>
                 )}
-              </motion.div>
-            </AnimatePresence>
-
-            <div className="flex justify-between">
-              {step > 1 && (
-                <Button type="button" variant="outline" onClick={handleBack}>
-                  Back
-                </Button>
-              )}
-
-              {step < 2 ? (
-                <Button 
-                  type="button" 
-                  onClick={handleNext} 
-                  disabled={!isStep1Valid}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Saving..." : "Complete Setup"}
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 

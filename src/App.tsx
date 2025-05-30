@@ -6,6 +6,7 @@ import SignInPage from "./components/SignInPage";
 import ProfilePage from "./components/ProfilePage";
 import ProfileCompletionPage from "./components/ProfileCompletionPage";
 import { Toaster } from "./components/ui/toaster";
+import Navigation from "./components/Navigation";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,7 @@ function App() {
     <AuthProvider>
       <Suspense fallback={<p>Loading...</p>}>
         <>
+          {/* Removed Navigation component from here */}
           <AppRoutes />
           {/* Removed tempo-routes integration for now */}
           <Toaster />

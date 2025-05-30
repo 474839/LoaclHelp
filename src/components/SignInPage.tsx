@@ -39,22 +39,24 @@ export default function SignInPage() {
       if (user) {
         console.log('useEffect - User is authenticated, checking profile completion...');
         const supabase = createSupabaseBrowserClient();
+        // Fetch phone_number, location, and user_type to check for profile completion
         const { data: profile, error } = await supabase
           .from('user_profiles')
-          .select('phone_number, location') // Fetch phone_number and location
+          .select('phone_number, location, user_type') 
           .eq('user_id', user.id)
           .single();
 
         console.log('useEffect - Profile fetch result:', profile, 'Error:', error);
 
+        // Check if profile record exists and if phone_number, location, and user_type are set
         if (error && error.details?.includes('0 rows')) {
            console.log('useEffect - Profile record does not exist, navigating to /complete-profile');
            navigate("/complete-profile");
         } else if (error) {
           console.error("useEffect - Error fetching profile completion status:", error);
           // Handle other errors if necessary, maybe stay on signin page or show a message
-        } else if (profile && (!profile.phone_number || !profile.location)) {
-           console.log('useEffect - Profile exists but phone_number or location is missing, navigating to /complete-profile');
+        } else if (profile && (!profile.phone_number || !profile.location || !profile.user_type)) { // Check if any of the required fields are missing
+           console.log('useEffect - Profile exists but phone_number, location, or user_type is missing, navigating to /complete-profile');
            navigate("/complete-profile");
         } else {
           console.log('useEffect - Profile complete, navigating to /');
@@ -263,26 +265,6 @@ export default function SignInPage() {
                     onChange={handleInputChange}
                     required
                     placeholder="Enter your full name"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phone_number">Phone Number</Label>
-                  <Input
-                    id="phone_number"
-                    name="phone_number"
-                    value={formData.phone_number}
-                    onChange={handleInputChange}
-                    placeholder="Enter your phone number"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    placeholder="Enter your location"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
