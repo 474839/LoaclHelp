@@ -14,11 +14,13 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { toast } from "./ui/use-toast";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function SignInPage() {
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
-  console.log('SignInPage component render - user:', user);
+  // console.log('SignInPage component render - user:', user); // Removed console log for clarity
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("signin");
   const [formData, setFormData] = useState({
@@ -28,15 +30,14 @@ export default function SignInPage() {
     phone_number: "",
     location: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   // Effect to navigate after successful sign-in
   useEffect(() => {
-    console.log('SignInPage useEffect - user:', user);
+    // console.log('SignInPage useEffect - user:', user); // Removed console log for clarity
     if (user) {
-      console.log('User is logged in, attempting to navigate to /.');
-      setTimeout(() => {
-        navigate("/");
-      }, 0);
+      // console.log('User is logged in, attempting to navigate to /.'); // Removed console log for clarity
+      navigate("/");
     }
   }, [user, navigate]); // Depend on user and navigate
 
@@ -89,7 +90,9 @@ export default function SignInPage() {
         title: "Success",
         description: "Account created! Please check your email to verify your account.",
       });
-      navigate("/complete-profile"); // Redirect to profile completion after sign-up
+      // The handle_new_user trigger will create the profile, and the user_profiles page handles completion.
+      // Redirect to profile completion after sign-up.
+      navigate("/complete-profile"); 
     } catch (error) {
       console.error("Error signing up:", error);
       toast({
@@ -100,6 +103,10 @@ export default function SignInPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleShowPassword = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -132,17 +139,40 @@ export default function SignInPage() {
                     placeholder="Enter your email"
                   />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-2 relative">
                   <Label htmlFor="password">Password</Label>
                   <Input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleInputChange}
                     required
                     placeholder="Enter your password"
+                    className="pr-10" // Add padding to make space for the icon
                   />
+                  <button
+                    type="button"
+                    onClick={toggleShowPassword}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center top-5"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={showPassword ? "hide" : "show"}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {showPassword ? (
+                          <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5 text-gray-500" />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </button>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}
@@ -164,17 +194,40 @@ export default function SignInPage() {
                     placeholder="Enter your email"
                   />
                 </div>
-                <div className="grid gap-2">
+                <div className="grid gap-2 relative">
                   <Label htmlFor="signup-password">Password</Label>
                   <Input
                     id="signup-password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleInputChange}
                     required
                     placeholder="Create a password"
+                    className="pr-10" // Add padding to make space for the icon
                   />
+                  <button
+                    type="button"
+                    onClick={toggleShowPassword}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center top-5"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                     <AnimatePresence mode="wait">
+                      <motion.div
+                        key={showPassword ? "hide" : "show"}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {showPassword ? (
+                          <EyeOffIcon className="h-5 w-5 text-gray-500" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5 text-gray-500" />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </button>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="full_name">Full Name</Label>

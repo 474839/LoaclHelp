@@ -12,26 +12,28 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { toast } from "./ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
-enum UserType { Hire = "hire", Job = "job" }
+enum UserType { 
+  HIRE = "hire", 
+  OFFER = "offer" 
+}
 
 export default function ProfileCompletionPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    date_of_birth: "",
-    user_type: UserType.Hire, // Default to hiring
-    // Add other questions here as needed
+    phone: "",
+    location: "",
+    user_type: UserType.HIRE,
   });
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -48,7 +50,14 @@ export default function ProfileCompletionPage() {
   };
 
   const handleNext = () => {
-    // Add validation for current step if needed
+    if (step === 1 && !isStep1Valid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
     setStep((prev) => prev + 1);
   };
 
@@ -61,17 +70,22 @@ export default function ProfileCompletionPage() {
     if (!user) return;
 
     setIsLoading(true);
-    const supabase = createSupabaseBrowserClient();
-
     try {
+      // Update user profile with phone and location
+      await updateProfile({
+        phone: formData.phone,
+        location: formData.location,
+      });
+
+      // Update user type in the database
+      const supabase = createSupabaseBrowserClient();
       const { error } = await supabase
         .from("user_profiles")
-        .update({
-          date_of_birth: formData.date_of_birth,
+        .upsert({
+          user_id: user.id,
           user_type: formData.user_type,
-          // Add other fields to update here
-        })
-        .eq("user_id", user.id);
+          updated_at: new Date().toISOString(),
+        });
 
       if (error) throw error;
 
@@ -79,7 +93,14 @@ export default function ProfileCompletionPage() {
         title: "Success",
         description: "Profile information saved!",
       });
-      navigate("/profile"); // Redirect to the main profile page
+
+      // Redirect based on user type
+      if (formData.user_type === UserType.HIRE) {
+        navigate("/"); // Redirect to home page for hiring users
+      } else {
+        // We'll handle the service offering flow later
+        navigate("/profile");
+      }
     } catch (error) {
       console.error("Error saving profile information:", error);
       toast({
@@ -92,9 +113,7 @@ export default function ProfileCompletionPage() {
     }
   };
 
-  // Basic form validation (can be expanded)
-  const isStep1Valid = formData.date_of_birth !== "";
-  // Add validation for other steps as they are added
+  const isStep1Valid = formData.phone.trim() !== "" && formData.location.trim() !== "";
 
   if (!user) {
     return <div className="container py-8">Please sign in to complete your profile.</div>;
@@ -122,35 +141,57 @@ export default function ProfileCompletionPage() {
                 {step === 1 && (
                   <div className="space-y-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="date_of_birth">Date of Birth</Label>
+                      <Label htmlFor="phone">Phone Number</Label>
                       <Input
-                        id="date_of_birth"
-                        name="date_of_birth"
-                        type="date"
-                        value={formData.date_of_birth}
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={formData.phone}
                         onChange={handleInputChange}
                         required
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="user_type">What are you looking for?</Label>
-                      <RadioGroup value={formData.user_type} onValueChange={handleRadioChange}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value={UserType.Hire} id="hire" />
-                          <Label htmlFor="hire">I'm looking to hire someone</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value={UserType.Job} id="job" />
-                          <Label htmlFor="job">I'm looking for a job</Label>
-                        </div>
-                      </RadioGroup>
+                      <Label htmlFor="location">Location</Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        type="text"
+                        placeholder="Enter your location"
+                        value={formData.location}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
-                    {/* Add more questions for step 1 here */}
                   </div>
                 )}
 
-                {/* Add more steps here with conditional rendering based on 'step' */}
-
+                {step === 2 && (
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label>What would you like to do?</Label>
+                      <RadioGroup 
+                        value={formData.user_type} 
+                        onValueChange={handleRadioChange}
+                        className="space-y-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value={UserType.HIRE} id="hire" />
+                          <Label htmlFor="hire" className="font-normal">
+                            I'm looking to hire someone
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value={UserType.OFFER} id="offer" />
+                          <Label htmlFor="offer" className="font-normal">
+                            I want to offer a service
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
 
@@ -161,13 +202,20 @@ export default function ProfileCompletionPage() {
                 </Button>
               )}
 
-              {step < 2 ? ( // Change '2' to the total number of steps you have
-                <Button type="button" onClick={handleNext} disabled={!isStep1Valid}> {/* Add validation check */}
+              {step < 2 ? (
+                <Button 
+                  type="button" 
+                  onClick={handleNext} 
+                  disabled={!isStep1Valid}
+                >
                   Next
                 </Button>
               ) : (
-                <Button type="submit" disabled={isLoading || !isStep1Valid}> {/* Add validation check */}
-                  {isLoading ? "Saving..." : "Finish Setup"}
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Saving..." : "Complete Setup"}
                 </Button>
               )}
             </div>

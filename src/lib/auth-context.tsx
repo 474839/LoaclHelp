@@ -62,20 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (signUpError) throw signUpError;
 
-    // Create a profile record
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            email: data.user.email,
-            full_name: fullName,
-            created_at: new Date().toISOString(),
-          },
-        ]);
-      if (profileError) throw profileError;
-    }
+    // The handle_new_user trigger in the database will automatically create a user_profiles record.
+    // We don't need to manually insert into the 'users' table here.
+    // if (data.user) {
+    //   const { error: profileError } = await supabase
+    //     .from('users')
+    //     .insert([
+    //       {
+    //         id: data.user.id,
+    //         email: data.user.email,
+    //         full_name: fullName,
+    //         created_at: new Date().toISOString(),
+    //       },
+    //     ]);
+    //   if (profileError) throw profileError;
+    // }
   };
 
   const signOut = async () => {

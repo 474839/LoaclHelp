@@ -60,11 +60,10 @@ CREATE TRIGGER update_user_profiles_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.user_profiles (user_id, full_name, avatar_url)
+    INSERT INTO public.user_profiles (user_id, full_name)
     VALUES (
         NEW.id,
-        NEW.raw_user_meta_data->>'full_name',
-        NEW.raw_user_meta_data->>'avatar_url'
+        NEW.raw_user_meta_data->>'full_name'
     );
     RETURN NEW;
 END;
